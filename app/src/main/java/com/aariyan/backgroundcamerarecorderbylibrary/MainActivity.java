@@ -1,24 +1,32 @@
 package com.aariyan.backgroundcamerarecorderbylibrary;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.Service;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Camera;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.IBinder;
 import android.provider.MediaStore;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import com.aariyan.backgroundcamerarecorderbylibrary.Service.CameraRecorderService;
 import com.aariyan.backgroundcamerarecorderbylibrary.Widget.SampleGLView;
 import com.daasuu.camerarecorder.CameraRecordListener;
 import com.daasuu.camerarecorder.CameraRecorder;
@@ -33,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 88888;
 
-    private Button recordBtn;
+    private Button recordBtn, stopRecording;
 
     protected int cameraWidth = 1280;
     protected int cameraHeight = 720;
@@ -41,9 +49,10 @@ public class MainActivity extends AppCompatActivity {
     protected int videoHeight = 720;
 
     protected LensFacing lensFacing = LensFacing.FRONT;
-    private String filepath;
-    protected CameraRecorder cameraRecorder;
-    private GLSurfaceView sampleGLView;
+    public static String filepath;
+    public static CameraRecorder cameraRecorder;
+    public static GLSurfaceView sampleGLView;
+    public static FrameLayout wrapView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +66,28 @@ public class MainActivity extends AppCompatActivity {
         initUI();
     }
 
+    //Here stopping the service if it's running already:
+    private void stopMainService() {
+        //Checking whether the service is already running or not:
+        if (CameraRecorderService.isServiceRunning) {
+            stopService(new Intent(MainActivity.this, CameraRecorderService.class));
+        }
+    }
+
     private void initUI() {
+
+        wrapView = findViewById(R.id.wrap_view);
+        stopRecording = findViewById(R.id.stopRecording);
+        stopRecording.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                stopMainService();
+            }
+        });
+
+        DisplayMetrics metrics = new DisplayMetrics();
+        WindowManager wm = (WindowManager) getApplicationContext().getSystemService(WINDOW_SERVICE);
+        wm.getDefaultDisplay().getRealMetrics(metrics);
         videoWidth = 720;
         videoHeight = 1280;
         cameraWidth = 1280;
@@ -67,15 +97,17 @@ public class MainActivity extends AppCompatActivity {
         recordBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                filepath = getVideoFilePath();
                 startCameraRecording();
             }
         });
     }
 
     private void startCameraRecording() {
+        startBackgroundCameraRecorderService();
         //set the file path:
-        filepath = getVideoFilePath();
-        cameraRecorder.start(filepath);
+
+        //cameraRecorder.start(filepath);
     }
 
     public static String getVideoFilePath() {
@@ -95,10 +127,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        releaseCamera();
+        //releaseCamera();
     }
 
-    private void releaseCamera() {
+    public static void releaseCamera() {
         if (sampleGLView != null) {
             sampleGLView.onPause();
         }
@@ -110,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (sampleGLView != null) {
-            ((FrameLayout) findViewById(R.id.wrap_view)).removeView(sampleGLView);
+            //wrapView.removeView(sampleGLView);
             sampleGLView = null;
         }
     }
@@ -130,10 +162,16 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
         setUpCamera();
+
         return true;
     }
 
-    private void setUpCamera() {
+    private void startBackgroundCameraRecorderService() {
+        Intent intent = new Intent(this, CameraRecorderService.class);
+        ContextCompat.startForegroundService(this, intent);
+    }
+
+    public void setUpCamera() {
         setUpCameraView();
 
         cameraRecorder = new CameraRecorderBuilder(this, sampleGLView)
@@ -186,14 +224,19 @@ public class MainActivity extends AppCompatActivity {
                 Uri.parse("file://" + filePath)));
     }
 
-    private void setUpCameraView() {
-        runOnUiThread(() -> {
-            FrameLayout frameLayout = findViewById(R.id.wrap_view);
-            frameLayout.removeAllViews();
-            sampleGLView = null;
-            sampleGLView = new SampleGLView(getApplicationContext());
-            frameLayout.addView(sampleGLView);
-        });
+    public void setUpCameraView() {
+//        runOnUiThread(() -> {
+//            FrameLayout frameLayout = findViewById(R.id.wrap_view);
+//            frameLayout.removeAllViews();
+//            sampleGLView = null;
+//            sampleGLView = new SampleGLView(getApplicationContext());
+//            frameLayout.addView(sampleGLView);
+//        });
+
+        wrapView.removeAllViews();
+        sampleGLView = null;
+        sampleGLView = new SampleGLView(getApplicationContext());
+        //wrapView.addView(sampleGLView);
     }
 
     @Override
@@ -207,6 +250,15 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "[WARN] camera permission is not grunted.", Toast.LENGTH_SHORT).show();
                 }
                 break;
+        }
+    }
+
+    static class TestService extends Service {
+
+        @Nullable
+        @Override
+        public IBinder onBind(Intent intent) {
+            return null;
         }
     }
 }
