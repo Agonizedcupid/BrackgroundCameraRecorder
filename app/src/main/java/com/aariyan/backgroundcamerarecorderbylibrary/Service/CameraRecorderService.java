@@ -1,5 +1,5 @@
 package com.aariyan.backgroundcamerarecorderbylibrary.Service;
-
+//Aariyan perfect
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -67,12 +67,12 @@ public class CameraRecorderService extends Service implements SurfaceHolder.Call
             notification = new Notification.Builder(getApplicationContext(), CHANNEL_ID_STRING)
                     .setContentTitle("CubeGo Video Recorder")
                     .setContentText("Please do NOT stop recording during the test")
-                    .setSmallIcon(R.drawable.ic_launcher_background).build();
+                    .setSmallIcon(R.drawable.crosshair_white).build();
         } else {
             notification = new Notification.Builder(this)
                     .setContentTitle("CubeGo Video Recorder")
                     .setContentText("Please do NOT stop recording during the test")
-                    .setSmallIcon(R.drawable.ic_launcher_background)     //TODO: change this icon?
+                    .setSmallIcon(R.drawable.crosshair_white)     //TODO: change this icon?
                     .build();
         }
         startForeground(1234, notification);
@@ -96,7 +96,7 @@ public class CameraRecorderService extends Service implements SurfaceHolder.Call
         layoutParams.alpha = 1f;    // transparency
 
         imageView = new ImageView(this);
-        imageView.setImageResource(R.drawable.ic_launcher_background);
+        imageView.setImageResource(R.drawable.crosshair_white);
         imageView.setY(0);
 
         windowManager.addView(surfaceView, layoutParams);
@@ -140,6 +140,7 @@ public class CameraRecorderService extends Service implements SurfaceHolder.Call
         }
 
         //outputFileFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) +"/CubeGO";
+        //outputFileFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/TestVideoRecorder");
         outputFileFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES) + "/TestVideoRecorder");
         String completeName = new File(outputFileFolder + "/" + System.currentTimeMillis() + "-VIDEO" + ".mp4").getAbsolutePath();
         if (!outputFileFolder.exists()) {

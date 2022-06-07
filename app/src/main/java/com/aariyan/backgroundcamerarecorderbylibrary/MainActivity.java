@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -92,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
+        checkOverlayPermission();
+
         // request camera permission if it has not been grunted.
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
                 checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
@@ -102,6 +105,19 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
         return true;
+    }
+
+    private void checkOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + MainActivity.this.getPackageName()));
+                //startActivityForResult(intent, Constant.OVERLAY_PERMISSION_REQUEST_CODE);
+                startActivity(intent);
+            } else {
+                Toast.makeText(this, "Permissions Daoa ase", Toast.LENGTH_SHORT).show();
+                //switchOverlayPermission.setEnabled(false);
+            }
+        }
     }
 
     @Override
