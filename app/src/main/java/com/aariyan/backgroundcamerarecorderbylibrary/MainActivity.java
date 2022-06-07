@@ -1,12 +1,14 @@
 package com.aariyan.backgroundcamerarecorderbylibrary;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Camera;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
@@ -19,6 +21,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import com.aariyan.backgroundcamerarecorderbylibrary.Service.CameraRecorderService;
 import com.aariyan.backgroundcamerarecorderbylibrary.Widget.SampleGLView;
 import com.daasuu.camerarecorder.CameraRecordListener;
 import com.daasuu.camerarecorder.CameraRecorder;
@@ -33,36 +36,28 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 88888;
 
-    private Button recordBtn;
-
-    protected int cameraWidth = 1280;
-    protected int cameraHeight = 720;
-    protected int videoWidth = 720;
-    protected int videoHeight = 720;
-
-    protected LensFacing lensFacing = LensFacing.FRONT;
-    private String filepath;
-    protected CameraRecorder cameraRecorder;
-    private GLSurfaceView sampleGLView;
+    private Button recordBtn, stopRecording;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        sampleGLView = new GLSurfaceView(getApplicationContext());
-        cameraRecorder = new CameraRecorderBuilder(MainActivity.this, sampleGLView)
-                .lensFacing(LensFacing.FRONT)
-                .build();
 
         initUI();
     }
 
     private void initUI() {
-        videoWidth = 720;
-        videoHeight = 1280;
-        cameraWidth = 1280;
-        cameraHeight = 720;
 
+        stopRecording = findViewById(R.id.stopRecordBtn);
+        stopRecording.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (CameraRecorderService.isServiceRunning) {
+                    stopService(new Intent(MainActivity.this, CameraRecorderService.class));
+                }
+
+            }
+        });
         recordBtn = findViewById(R.id.recordBtn);
         recordBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -73,18 +68,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startCameraRecording() {
-        //set the file path:
-        filepath = getVideoFilePath();
-        cameraRecorder.start(filepath);
+        if (!CameraRecorderService.isServiceRunning) {
+            Intent intent = new Intent(this, CameraRecorderService.class);
+            ContextCompat.startForegroundService(this, intent);
+        }
+
     }
 
-    public static String getVideoFilePath() {
-        return getAndroidMoviesFolder().getAbsolutePath() + "/" + new SimpleDateFormat("yyyyMM_dd-HHmmss").format(new Date()) + "cameraRecorder.mp4";
-    }
-
-    public static File getAndroidMoviesFolder() {
-        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
-    }
 
     @Override
     protected void onResume() {
@@ -95,24 +85,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        releaseCamera();
-    }
-
-    private void releaseCamera() {
-        if (sampleGLView != null) {
-            sampleGLView.onPause();
-        }
-
-        if (cameraRecorder != null) {
-            cameraRecorder.stop();
-            cameraRecorder.release();
-            cameraRecorder = null;
-        }
-
-        if (sampleGLView != null) {
-            ((FrameLayout) findViewById(R.id.wrap_view)).removeView(sampleGLView);
-            sampleGLView = null;
-        }
     }
 
     private boolean checkPermission() {
@@ -129,71 +101,7 @@ public class MainActivity extends AppCompatActivity {
             requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE}, CAMERA_PERMISSION_REQUEST_CODE);
             return false;
         }
-        setUpCamera();
         return true;
-    }
-
-    private void setUpCamera() {
-        setUpCameraView();
-
-        cameraRecorder = new CameraRecorderBuilder(this, sampleGLView)
-                //.recordNoFilter(true)
-                .cameraRecordListener(new CameraRecordListener() {
-                    @Override
-                    public void onGetFlashSupport(boolean flashSupport) {
-                    }
-
-                    @Override
-                    public void onRecordComplete() {
-                        exportMp4ToGallery(getApplicationContext(), filepath);
-                    }
-
-                    @Override
-                    public void onRecordStart() {
-
-                    }
-
-                    @Override
-                    public void onError(Exception exception) {
-                        Log.e("CameraRecorder", exception.toString());
-                    }
-
-                    @Override
-                    public void onCameraThreadFinish() {
-//                        if (toggleClick) {
-//                            runOnUiThread(() -> {
-//                                setUpCamera();
-//                            });
-//                        }
-//                        toggleClick = false;
-                    }
-                })
-                .videoSize(videoWidth, videoHeight)
-                .cameraSize(cameraWidth, cameraHeight)
-                .lensFacing(lensFacing)
-                .build();
-
-
-    }
-
-    public static void exportMp4ToGallery(Context context, String filePath) {
-        final ContentValues values = new ContentValues(2);
-        values.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4");
-        values.put(MediaStore.Video.Media.DATA, filePath);
-        context.getContentResolver().insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                values);
-        context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
-                Uri.parse("file://" + filePath)));
-    }
-
-    private void setUpCameraView() {
-        runOnUiThread(() -> {
-            FrameLayout frameLayout = findViewById(R.id.wrap_view);
-            frameLayout.removeAllViews();
-            sampleGLView = null;
-            sampleGLView = new SampleGLView(getApplicationContext());
-            frameLayout.addView(sampleGLView);
-        });
     }
 
     @Override
